@@ -1,13 +1,4 @@
-import asyncio
-import logging
-import random
 import requests
-
-
-from aiogram import Bot, Dispatcher, Router, F
-from aiogram.types import Message, Location
-from aiogram.filters import CommandStart, Command, CommandObject
-
 
 from enum import Enum
 from pydantic import BaseModel, field_validator, Field
@@ -73,7 +64,6 @@ moon_code: dict = {
 class Basic_Weather(BaseModel):
     temp: int
     feels_like: int
-    humidity: int
     condition: Condition
     wind_speed: float
     wind_dir: Wind
@@ -137,64 +127,3 @@ class Extended_Weather(BaseModel):
 class Weather(BaseModel):
     basic_info: Basic_Weather = Field(alias="fact")
     extended_info: Extended_Weather = Field(alias="forecast")
-
-
-def get_weather(*, lat: float, lon: float) -> Weather:
-    headers = {"X-Yandex-API-Key": "49bace7b-dcb3-4561-8ea2-72d7ec734ff1"}
-    resp = requests.get(url=f"https://api.weather.yandex.ru/v2/informers?lat={lat}&lon={lon}&lang=ru_RU", headers=headers).json()
-    return Weather(**resp)
-    
-
-def counter_of_call(limmit: int):
-    
-    def decorator(func):
-        start: int = 0
-        async def wrapper(mess: Message):
-            nonlocal start
-            if start < limmit:
-                start+=1
-                print(start)
-                await func(mess)
-
-            else:
-                pass
-        return wrapper
-    return decorator
-
-            
-
-logging.basicConfig(level=logging.INFO)
-
-bot = Bot("6490268843:AAFhVQsynDjNZRKvDPofkz41_aFV4UodBBo")
-dp = Dispatcher()
-
-
-@dp.message(CommandStart())
-async def loc(mess: Message):
-    await mess.answer(text="Привет пришли мне геолокацию, чтобы получить прогноз погоды")
-
-
-@dp.message(F.text == "rn")
-@counter_of_call(3)
-async def locker(mess: Message):
-    await mess.answer(text="Ты вызвал меня")
-
-@dp.message(F.location)
-async def location(mess: Message):
-    weather = get_weather(lat=mess.location.latitude, lon=mess.location.longitude)
-    await mess.answer(text=f"""Температруа {weather.basic_info.temp}°, но ощущается как {weather.basic_info.feels_like}° {weather.basic_info.condition.value}
-скорость ветра {weather.basic_info.wind_speed} м/с, направление {weather.basic_info.wind_dir.value}
-{weather.extended_info.moon}""")
-
-@dp.message()
-async def handler(mess: Message):
-    await mess.answer(text="Пришлите мне пожалуйста вашу геолокацию")
-
-
-async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
